@@ -10,6 +10,6 @@ Katsushi Matsuda氏、毛流麦花氏が開発された [Unicode 版 msearch 1.5
 ## 利用例
 あにねこ登山日誌 [HP内検索ページ](https://anineco.org/msearch/msearch.cgi)
 ## 設置方法
-* genindex.pl の「# 🔖 NOTE:」が付された行を、設置するサイトに合わせて変更。
-* msearch.cgi についても「# 🔖 NOTE:」が付された行を必要に応じて変更（通常は変更不要）。 
+* genindex.pl の「# 🔖」が付された行を、設置するサイトに合わせて変更。
+* msearch.cgi についても「# 🔖」が付された行を必要に応じて変更。 
 * ローカル環境にて genindex.pl でデータベースファイル（ファイル名：default.db）を作成する。ウェブサーバには msearch.{cgi,css} と作成した default.db を設置する。 
