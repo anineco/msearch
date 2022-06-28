@@ -11,7 +11,7 @@ use DBI;
 use POSIX qw/strftime/;
 
 #
-# HTMLエンコード
+# HTML特殊記号のエンコード
 #
 sub sanitize {
   my $s = shift;
@@ -50,7 +50,7 @@ Content-type: text/html;charset=UTF-8
 <table>
 <tr>
 <td>
-<a href="..">TOP</a><!-- 🔖 NOTE: TOPページへのリンク -->
+<a href="..">TOP</a><!-- 🔖 TOPページへのリンク -->
 $help
 </td>
 <td class="powerd">Powered by msearch</td>
@@ -90,7 +90,7 @@ EOS
 #
 sub print_help {
   print <<'EOS';
-<h2>SQLite3版msearch ver. 2.0 による検索方法</h2>
+<h2>SQLite3 版 msearch による検索方法</h2>
 <table class="example">
 <tr>
 <th>例</th>
@@ -149,7 +149,7 @@ Unicode対応版：<a href="http://www.marbacka.net/msearch/">Unicode版msearch<
 SQLite3版：<a href="https://github.com/anineco/msearch">GitHub</a></p>
 </article>
 </main>
-</div>
+</div><!-- #container -->
 </body>
 </html>
 EOS
@@ -186,11 +186,11 @@ unless($query) {
 
   print_status('ページ数：' . $c, '最終更新日時：' . $m);
   print_help();
-
 } else {
 ###############################
-# 検索結果を出力
+# 検索実行と結果表示
 ###############################
+  print_head('検索結果', $query);
 
 #
 # 検索式 → WHERE句条件式
@@ -198,8 +198,8 @@ unless($query) {
   my $condition = ''; # WHERE句条件式
   my @c_words = (); # content のキーワード
   my @t_words = (); # title のキーワード
-  my $q = $query;
 
+  my $q = $query;
   while ($q) {
     if ($condition) {
       $condition .= ' AND';
@@ -232,20 +232,24 @@ unless($query) {
     $q =~ s/^\s*//;
   }
 
-  print_head('検索結果', $query);
-
+#
+# 検索を実行
+#
   my $s0 = times;
   $sth = $dbh->prepare('SELECT COUNT(*) AS c FROM records WHERE' . $condition);
   $sth->execute();
   my $c = $sth->fetchrow_hashref->{c};
   $sth->finish;
 
-  $sth = $dbh->prepare('SELECT * FROM records WHERE' . $condition . ' ORDER BY period DESC'); # 🔖 NOTE: period でソート
+  $sth = $dbh->prepare('SELECT * FROM records WHERE' . $condition . ' ORDER BY period DESC'); # 🔖 period でソート
   $sth->execute();
   my $m = sprintf '%.2f', times - $s0;
 
   print_status('ヒット数：' . $c, '検索に要した時間：' . $m . '秒');
 
+#
+# 検索結果を表示
+#
   print '<dl>', "\n";
   my $seqno = 0;
   while (my $row = $sth->fetchrow_hashref) {
@@ -262,24 +266,24 @@ unless($query) {
         $i = $k;
       }
     }
-    $i -= 20;        # 🔖 NOTE: キーワードの前方20字
+    $i -= 20;        # 🔖 キーワードの前方20字
     if ($i < 0) {
       $i = 0;
     }
-    my $j = $i + 60; # 🔖 NOTE: キーワードの後方40字
+    my $j = $i + 60; # 🔖 キーワードの後方40字
     if ($j > $n) {
       $j = $n;
     }
     my $summary = substr($content, $i, $j - $i);
     foreach my $w (@c_words) {
-      $summary =~ s,$w,\elt;b\egt;$w\elt;/b\egt;,;
+      $summary =~ s,$w,\elt;b\egt;$w\elt;/b\egt;,; # NOTE: $w → <b>$w</b>
     }
     $summary = sanitize($summary);
     $summary =~ s,\elt;,<,g;
     $summary =~ s,\egt;,>,g;
 
     foreach my $w (@t_words) {
-      $title =~ s,$w,\elt;b\egt;$w\elt;/b\egt;,;
+      $title =~ s,$w,\elt;b\egt;$w\elt;/b\egt;,; # NOTE: $w → <b>$w</b>
     }
     $title = sanitize($title);
     $title =~ s,\elt;,<,g;
@@ -298,7 +302,7 @@ EOS
   print <<'EOS';
 </article>
 </main>
-</div>
+</div><!-- #container -->
 </body>
 </html>
 EOS
