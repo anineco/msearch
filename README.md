@@ -12,4 +12,4 @@ Katsushi Matsuda氏、毛流麦花氏が開発された [Unicode 版 msearch 1.5
 ## 設置方法
 * genindex.pl の「# 🔖」が付された行を、設置するサイトに合わせて変更。
 * msearch.cgi についても「# 🔖」が付された行を必要に応じて変更。 
-* ローカル環境にて genindex.pl でデータベースファイル（ファイル名：default.db）を作成する。ウェブサーバには msearch.{cgi,css} と作成した default.db を設置する。 
+* ローカル環境にて genindex.pl でデータベースファイル（ファイル名：default.db）を作成する。ウェブサーバには msearch.{cgi,css}、nek9c.jpg（背景画像ファイル）と作成した default.db を設置する。 
