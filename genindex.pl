@@ -11,6 +11,9 @@ use File::Basename qw/basename/;
 use HTML::TreeBuilder;
 use IO::HTML;
 
+#
+# HTML::Element のノードからテキストを抽出
+#
 sub extract_text {
   my ($texts, $element) = @_;
 
@@ -26,42 +29,56 @@ sub extract_text {
 }
 
 #
-# データベースを新規に作成する
+# データベースをオープン
 #
-unlink 'default.db';
 my $dbh = DBI->connect('dbi:SQLite:dbname=default.db', '', '',
   { RaiseError => 1, PrintError => 0, sqlite_unicode => 1 });
 
+#
+# テーブルがなければ作成
+#
 $dbh->do(<<'EOS');
-CREATE TABLE records (  -- 山行記録
-  file TEXT,            -- ファイルパス
-  fsize INTEGER,        -- ファイルサイズ（バイト）
-  mtime INTEGER,        -- 最終修正日時（エポック秒）
-  url TEXT PRIMARY KEY, -- URL
-  lang TEXT,            -- 言語
-  period TEXT,          -- 開始日
-  title TEXT,           -- タイトル
-  content TEXT          -- 本文
+CREATE TABLE IF NOT EXISTS records (
+  file TEXT PRIMARY KEY, -- ファイルパス
+  fsize INTEGER, -- ファイルサイズ（バイト）
+  mtime INTEGER, -- 最終修正日時（エポック秒）
+  url TEXT,      -- URL
+  lang TEXT,     -- 言語
+  period TEXT,   -- 開始日
+  title TEXT,    -- タイトル
+  content TEXT   -- 本文
 )
 EOS
 
 #
-# データベースにデータを登録
+# データベースから検索対象ファイルの最終更新日時を取得
 #
-my $targets = '../[0-9]*.html';       # 🔖 NOTE: 検索対象ファイル
-my $baseurl = 'https://anineco.org/'; # 🔖 NOTE: ベースURL
+my $mtimes = {};
+my $sth = $dbh->prepare('SELECT file,mtime FROM records');
+$sth->execute();
+while (my $row = $sth->fetchrow_hashref) {
+  $mtimes->{$row->{file}} = $row->{mtime};
+}
+$sth->finish;
 
-my $sth = $dbh->prepare('INSERT INTO records VALUES (?,?,?,?,?,?,?,?)');
-my $m = 0;
+#
+# データベースに検索対象ファイルの情報を登録
+#
+my $targets = '../[0-9]*.html';       # 🔖 検索対象ファイル
+my $baseurl = 'https://anineco.org/'; # 🔖 ベースURL
+
+my $m = 0; # 更新ページ数
+$sth = $dbh->prepare('INSERT OR REPLACE INTO records VALUES (?,?,?,?,?,?,?,?)');
 foreach my $file (glob $targets) {
   my ($fsize, $mtime) = (stat $file)[7, 9];
+  next if (exists($mtimes->{$file}) && $mtimes->{$file} >= $mtime);
 
   my $tree = HTML::TreeBuilder->new;
   $tree->ignore_unknown(0); # for 'time' tag
   $tree->parse_file(html_file($file));
   $tree->eof();
 
-  my $url = $baseurl . basename($file); # 🔖 NOTE: 検索対象ファイルのURL
+  my $url = $baseurl . basename($file); # 🔖 検索対象ファイルのURL
   my $lang = $tree->find('html')->attr('lang');
   my $period = $tree->find('time')->attr('datetime'); # %Y-%m-%d フォーマット
   my $title = $tree->find('title')->as_text();
@@ -74,7 +91,7 @@ foreach my $file (glob $targets) {
   $sth->finish;
   $m++;
 }
-print 'ページ数：', $m, "\n";
+print '更新ページ数：', $m, "\n";
 
 $dbh->disconnect;
 __END__
