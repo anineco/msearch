@@ -36,3 +36,4 @@ inc/
 
 # added by anineco
 *.db
+*.sh
