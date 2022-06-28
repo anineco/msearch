@@ -146,7 +146,7 @@ sub print_help {
 <p class="set">msearchとはKatsushi Matsuda氏、毛流麦花氏が開発された、設置が容易で高速な全文検索エンジンです。<br>
 オリジナル（アーカイブ）：<a href="https://web.archive.org/web/20181209073715/http://www.kiteya.net:80/script/msearch/">HP内全文検索エンジンmsearch</a><br>
 Unicode対応版：<a href="http://www.marbacka.net/msearch/">Unicode版msearch</a><br>
-SQLite版：<a href="https://anineco.nyanta.jp/wiki/doku.php?id=msearch">あにねこ電脳覚書</a></p>
+SQLite3版：<a href="https://github.com/anineco/msearch">GitHub</a></p>
 </article>
 </main>
 </div>
