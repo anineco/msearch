@@ -276,18 +276,25 @@ unless($query) {
     }
     my $summary = substr($content, $i, $j - $i);
     foreach my $w (@c_words) {
-      $summary =~ s,$w,\elt;b\egt;$w\elt;/b\egt;,; # NOTE: $w → <b>$w</b>
+      my $k = index($summary, $w);
+      if ($k >= 0) {
+        substr $summary, $k, length($w), "\elt;b\egt;$w\elt;/b\egt;";
+      }
     }
     $summary = sanitize($summary);
-    $summary =~ s,\elt;,<,g;
-    $summary =~ s,\egt;,>,g;
+    $summary =~ s/\elt;/</g;
+    $summary =~ s/\egt;/>/g;
 
     foreach my $w (@t_words) {
-      $title =~ s,$w,\elt;b\egt;$w\elt;/b\egt;,; # NOTE: $w → <b>$w</b>
+      my $k = index($title, $w);
+      if ($k >= 0) {
+        substr $title, $k, length($w), "\elt;b\egt;$w\elt;/b\egt;";
+      }
     }
     $title = sanitize($title);
-    $title =~ s,\elt;,<,g;
-    $title =~ s,\egt;,>,g;
+    $title =~ s/\elt;/</g;
+    $title =~ s/\egt;/>/g;
+
     print <<"EOS";
 <dt>$seqno. <a href="$url">$title</a></dt>
 <dd><span class="url">$url</span><br>$summary</dd>
