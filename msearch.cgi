@@ -43,7 +43,7 @@ sub partial_match_string {
 #
 sub print_head {
   my ($title, $query) = @_;
-  my $help = $query ? '<a href="msearch.cgi">HELP</a>' : '';
+  my $help = length($query) ? '<a href="msearch.cgi">HELP</a>' : '';
   $title = htmlspecialchars($title);
   $query = htmlspecialchars($query);
 
@@ -186,7 +186,7 @@ utf8::decode($query) unless utf8::is_utf8($query);
 $query =~ s/^\s*//;
 $query =~ s/\s*$//;
 
-unless($query) {
+unless (length $query) {
 ###############################
 # HP内検索ヘルプを出力
 ###############################
@@ -215,7 +215,7 @@ unless($query) {
   my @t_words = (); # title のキーワード
 
   my $q = $query;
-  while ($q) {
+  while (length $q) {
     if ($condition) {
       $condition .= ' AND';
     }
@@ -223,7 +223,7 @@ unless($query) {
       my $s = $1;
       $s =~ s/^\s*//;
       my @terms = (); # キーワード
-      while ($s) {
+      while (length $s) {
         if ($s =~ s/^"(.+?)"// || $s =~ s/^(\S+)//) { # "AAA" または AAA
           push(@t_words, $1);
           push(@c_words, $1);
