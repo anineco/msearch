@@ -11,9 +11,9 @@ use DBI;
 use POSIX qw/strftime/;
 
 #
-# HTML特殊記号のエンコード
+# HTML特殊文字をエスケープ
 #
-sub sanitize {
+sub htmlspecialchars {
   my $s = shift;
   $s =~ s/&/&amp;/g;
   $s =~ s/</&lt;/g;
@@ -24,13 +24,28 @@ sub sanitize {
 }
 
 #
+# SQL部分一致検索用に特殊文字をエスケープ
+#
+sub partial_match_string {
+  my $s = shift;
+  $s =~ s/'/''/g;
+  if ($s !~ /[%_]/) {
+    return "'%$s%'";
+  }
+  $s =~ s/\e/\e\e/g;
+  $s =~ s/%/\e%/g;
+  $s =~ s/_/\e_/g;
+  return "'%$s%' ESCAPE '\e'"
+}
+
+#
 # HTMLヘッダー部出力（共通）
 #
 sub print_head {
   my ($title, $query) = @_;
   my $help = $query ? '<a href="msearch.cgi">HELP</a>' : '';
-  $title = sanitize($title);
-  $query = sanitize($query);
+  $title = htmlspecialchars($title);
+  $query = htmlspecialchars($query);
 
   print <<"EOS";
 Content-type: text/html;charset=UTF-8
@@ -216,18 +231,22 @@ unless($query) {
         }
         $s =~ s/^\s*//;
       }
-      $condition .= ' (' . join(' OR ', map { "title LIKE '%$_%' OR content LIKE '%$_%'" } @terms) . ')';
+      $condition .= ' (' . join(' OR ', map {
+        my $w = partial_match_string($_);
+        'title LIKE ' . $w . ' OR content LIKE ' . $w;
+      } @terms) . ')';
     } elsif ($q =~ s/^-"(.+?)"// || $q =~ s/^-(\S+)//) { # -"AAA" または -AAA
-      $condition .= " content NOT LIKE '%$1%'";
+      $condition .= ' content NOT LIKE ' . partial_match_string($1);
     } elsif ($q =~ s/^[tT]:"(.+?)"// || $q =~ s/^[tT]:(\S+)//) { # t:"AAA" または t:AAA
       push(@t_words, $1);
-      $condition .= " title LIKE '%$1%'";
+      $condition .= ' title LIKE ' . partial_match_string($1);
     } elsif ($q =~ s/^[uU]:"(.+?)"// || $q =~ s/^[uU]:(\S+)//) { # u:"AAA" または u:AAA
-      $condition .= " url LIKE '%$1%'";
+      $condition .= ' url LIKE ' . partial_match_string($1);
     } elsif ($q =~ s/^"(.+?)"// || $q =~ s/^(\S+)//) { # "AAA" または AAA
       push(@t_words, $1);
       push(@c_words, $1);
-      $condition .= " (title LIKE '%$1%' OR content LIKE '%$1%')";
+      my $w = partial_match_string($1);
+      $condition .= ' (title LIKE ' . $w . ' OR content LIKE ' . $w . ')';
     }
     $q =~ s/^\s*//;
   }
@@ -281,7 +300,7 @@ unless($query) {
         substr $summary, $k, length($w), "\elt;b\egt;$w\elt;/b\egt;";
       }
     }
-    $summary = sanitize($summary);
+    $summary = htmlspecialchars($summary);
     $summary =~ s/\elt;/</g;
     $summary =~ s/\egt;/>/g;
 
@@ -291,7 +310,7 @@ unless($query) {
         substr $title, $k, length($w), "\elt;b\egt;$w\elt;/b\egt;";
       }
     }
-    $title = sanitize($title);
+    $title = htmlspecialchars($title);
     $title =~ s/\elt;/</g;
     $title =~ s/\egt;/>/g;
 
