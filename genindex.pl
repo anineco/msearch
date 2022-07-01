@@ -32,7 +32,7 @@ sub extract_text {
 # データベースをオープン
 #
 my $dbh = DBI->connect('dbi:SQLite:dbname=default.db', '', '',
-  { RaiseError => 1, PrintError => 0, sqlite_unicode => 1 });
+  { RaiseError => 1, PrintError => 0, sqlite_unicode => 1 }) or die $DBI::errstr;
 
 #
 # テーブルがなければ作成
@@ -67,12 +67,18 @@ $sth->finish;
 my $targets = '../[0-9]*.html';       # 🔖 検索対象ファイル
 my $baseurl = 'https://anineco.org/'; # 🔖 ベースURL
 
+my $n = 0; # 新規ページ数
 my $m = 0; # 更新ページ数
 $sth = $dbh->prepare('INSERT OR REPLACE INTO records VALUES (?,?,?,?,?,?,?,?)');
 foreach my $file (glob $targets) {
   my ($fsize, $mtime) = (stat $file)[7, 9];
-  next if (exists($mtimes->{$file}) && $mtimes->{$file} >= $mtime);
-
+  if (exists($mtimes->{$file})) {
+    next if ($mtimes->{$file} >= $mtime);
+    $m++;
+  } else {
+    $n++;
+  }
+  
   my $tree = HTML::TreeBuilder->new;
   $tree->ignore_unknown(0); # for 'time' tag
   $tree->parse_file(html_file($file));
@@ -89,8 +95,8 @@ foreach my $file (glob $targets) {
 
   $sth->execute($file, $fsize, $mtime, $url, $lang, $period, $title, $content);
   $sth->finish;
-  $m++;
 }
+print '新規ページ数：', $n, "\n";
 print '更新ページ数：', $m, "\n";
 
 $dbh->disconnect;
