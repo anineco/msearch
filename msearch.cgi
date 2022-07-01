@@ -7,6 +7,7 @@ use open ':utf8';
 use open ':std';
 
 use CGI;
+use CGI::Carp qw/fatalsToBrowser/;
 use DBI;
 use POSIX qw/strftime/;
 
@@ -21,21 +22,6 @@ sub htmlspecialchars {
   $s =~ s/"/&quot;/g;
   $s =~ s/'/&apos;/g;
   return $s;
-}
-
-#
-# SQL部分一致検索用に特殊文字をエスケープ
-#
-sub partial_match_string {
-  my $s = shift;
-  $s =~ s/'/''/g;
-  if ($s !~ /[%_]/) {
-    return "'%$s%'";
-  }
-  $s =~ s/\e/\e\e/g;
-  $s =~ s/%/\e%/g;
-  $s =~ s/_/\e_/g;
-  return "'%$s%' ESCAPE '\e'"
 }
 
 #
@@ -174,8 +160,7 @@ EOS
 # データベースを開く
 #
 my $dbh = DBI->connect('dbi:SQLite:dbname=default.db', '', '',
-  { RaiseError => 1, PrintError => 0, sqlite_unicode => 1, ReadOnly => 1 });
-my $sth;
+  { RaiseError => 1, PrintError => 0, sqlite_unicode => 1, ReadOnly => 1 }) or die $DBI::errstr;
 
 #
 # 検索式を得る
@@ -192,12 +177,9 @@ unless (length $query) {
 ###############################
   print_head('HP内検索ヘルプ', $query);
 
-  $sth = $dbh->prepare('SELECT COUNT(*) AS c,MAX(mtime) AS m FROM records');
-  $sth->execute();
-  my $row = $sth->fetchrow_hashref;
+  my $row = $dbh->selectrow_hashref('SELECT COUNT(*) AS c,MAX(mtime) AS m FROM records');
   my $c = $row->{c};
   my $m = strftime('%F %T', localtime($row->{m}));
-  $sth->finish;
 
   print_status('ページ数：' . $c, '最終更新日時：' . $m);
   print_help();
@@ -232,21 +214,24 @@ unless (length $query) {
         $s =~ s/^\s*//;
       }
       $condition .= ' (' . join(' OR ', map {
-        my $w = partial_match_string($_);
-        'title LIKE ' . $w . ' OR content LIKE ' . $w;
+        my $w = $_ =~ s/'/''/gr;
+        "INSTR(title,'$w') OR INSTR(content,'$w')";
       } @terms) . ')';
     } elsif ($q =~ s/^-"(.+?)"// || $q =~ s/^-(\S+)//) { # -"AAA" または -AAA
-      $condition .= ' content NOT LIKE ' . partial_match_string($1);
+      my $w = $1 =~ s/'/''/gr;
+      $condition .= " NOT INSTR(content,'$w')";
     } elsif ($q =~ s/^[tT]:"(.+?)"// || $q =~ s/^[tT]:(\S+)//) { # t:"AAA" または t:AAA
       push(@t_words, $1);
-      $condition .= ' title LIKE ' . partial_match_string($1);
+      my $w = $1 =~ s/'/''/gr;
+      $condition .= " INSTR(title,'$w')";
     } elsif ($q =~ s/^[uU]:"(.+?)"// || $q =~ s/^[uU]:(\S+)//) { # u:"AAA" または u:AAA
-      $condition .= ' url LIKE ' . partial_match_string($1);
+      my $w = $1 =~ s/'/''/gr;
+      $condition .= " INSTR(url,'$w')";
     } elsif ($q =~ s/^"(.+?)"// || $q =~ s/^(\S+)//) { # "AAA" または AAA
       push(@t_words, $1);
       push(@c_words, $1);
-      my $w = partial_match_string($1);
-      $condition .= ' (title LIKE ' . $w . ' OR content LIKE ' . $w . ')';
+      my $w = $1 =~ s/'/''/gr;
+      $condition .= " (INSTR(title,'$w') OR INSTR(content,'$w'))";
     }
     $q =~ s/^\s*//;
   }
@@ -255,12 +240,9 @@ unless (length $query) {
 # 検索を実行
 #
   my $s0 = times;
-  $sth = $dbh->prepare('SELECT COUNT(*) AS c FROM records WHERE' . $condition);
-  $sth->execute();
-  my $c = $sth->fetchrow_hashref->{c};
-  $sth->finish;
+  my $c = $dbh->selectrow_hashref('SELECT COUNT(*) AS c FROM records WHERE' . $condition)->{c};
 
-  $sth = $dbh->prepare('SELECT * FROM records WHERE' . $condition . ' ORDER BY period DESC'); # 🔖 period でソート
+  my $sth = $dbh->prepare('SELECT * FROM records WHERE' . $condition . ' ORDER BY period DESC'); # 🔖 period でソート
   $sth->execute();
   my $m = sprintf '%.2f', times - $s0;
 
