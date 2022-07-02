@@ -7,7 +7,6 @@ use open ':utf8';
 use open ':std';
 
 use DBI;
-use File::Basename qw/basename/;
 use HTML::TreeBuilder;
 use IO::HTML;
 
@@ -53,30 +52,45 @@ EOS
 #
 # データベースから検索対象ファイルの最終更新日時を取得
 #
-my $mtimes = {};
+my %mtimes = ();
 my $sth = $dbh->prepare('SELECT file,mtime FROM records');
 $sth->execute();
 while (my $row = $sth->fetchrow_hashref) {
-  $mtimes->{$row->{file}} = $row->{mtime};
+  $mtimes{$row->{file}} = $row->{mtime};
 }
 $sth->finish;
 
 #
+# 存在しないファイルをデータベースから削除
+#
+my $n_delete = 0; # 削除ページ数
+$sth = $dbh->prepare('DELETE FROM records WHERE file=?');
+foreach my $file (keys(%mtimes)) {
+  next if (-f $file);
+  $n_delete++;
+  $sth->execute($file);
+  $sth->finish;
+}
+
+#
 # データベースに検索対象ファイルの情報を登録
 #
-my $targets = '../[0-9]*.html';       # 🔖 検索対象ファイル
+my $basedir = '../';                  # 🔖 検索対象ディレクトリ
+my @targets = qw{[0-9]*.html};        # 🔖 検索対象ファイル
 my $baseurl = 'https://anineco.org/'; # 🔖 ベースURL
 
-my $n = 0; # 新規ページ数
-my $m = 0; # 更新ページ数
+my $n_pages = 0;  # 対象ページ数
+my $n_insert = 0; # 新規ページ数
+my $n_update = 0; # 更新ページ数
 $sth = $dbh->prepare('INSERT OR REPLACE INTO records VALUES (?,?,?,?,?,?,?,?)');
-foreach my $file (glob $targets) {
+foreach my $file (glob join(' ', map { $basedir . $_ } @targets)) {
   my ($fsize, $mtime) = (stat $file)[7, 9];
-  if (exists($mtimes->{$file})) {
-    next if ($mtimes->{$file} >= $mtime);
-    $m++;
+  $n_pages++;
+  if (exists($mtimes{$file})) {
+    next if ($mtimes{$file} >= $mtime);
+    $n_update++;
   } else {
-    $n++;
+    $n_insert++;
   }
   
   my $tree = HTML::TreeBuilder->new;
@@ -84,7 +98,7 @@ foreach my $file (glob $targets) {
   $tree->parse_file(html_file($file));
   $tree->eof();
 
-  my $url = $baseurl . basename($file); # 🔖 検索対象ファイルのURL
+  my $url = $baseurl . ($file =~ s/^$basedir//r);
   my $lang = $tree->find('html')->attr('lang');
   my $period = $tree->find('time')->attr('datetime'); # %Y-%m-%d フォーマット
   my $title = $tree->find('title')->as_text();
@@ -96,8 +110,10 @@ foreach my $file (glob $targets) {
   $sth->execute($file, $fsize, $mtime, $url, $lang, $period, $title, $content);
   $sth->finish;
 }
-print '新規ページ数：', $n, "\n";
-print '更新ページ数：', $m, "\n";
+print '削除ページ数：', $n_delete, "\n";
+print '新規ページ数：', $n_insert, "\n";
+print '更新ページ数：', $n_update, "\n";
+print '対象ページ数：', $n_pages, "\n";
 
 $dbh->disconnect;
 __END__
