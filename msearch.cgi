@@ -261,21 +261,25 @@ unless (length $query) {
 
     my $n = length($content);
     my $i = -1;
+    my $kw = '';
     foreach my $w (@c_words) {
       my $k = index($content, $w);
       if ($k >= 0 && ($i < 0 || $k < $i)) {
         $i = $k;
+        $kw = $w;
       }
     }
-    $i -= 20;        # 🔖 キーワードの前方20字
+    $i -= 20; # 🔖 キーワードの前方20字
     if ($i < 0) {
       $i = 0;
     }
-    my $j = $i + 60; # 🔖 キーワードの後方40字
-    if ($j > $n) {
-      $j = $n;
+    my $j = $i + length($kw) + 60; # 🔖 キーワードの後方40字
+    my $summary;
+    if ($j < $n) {
+      $summary = substr($content, $i, $j - $i) . '・・・';
+    } else {
+      $summary = substr($content, $i);
     }
-    my $summary = substr($content, $i, $j - $i);
     foreach my $w (@c_words) {
       my $k = index($summary, $w);
       if ($k >= 0) {
