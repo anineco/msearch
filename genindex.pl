@@ -1,10 +1,9 @@
-#!/usr/local/bin/perl
+#!/usr/bin/env perl
 
 use strict;
 use warnings;
 use utf8;
-use open ':utf8';
-use open ':std';
+use open qw(:utf8 :std);
 
 use DBI;
 use HTML::TreeBuilder;
@@ -31,7 +30,8 @@ sub extract_text {
 # データベースをオープン
 #
 my $dbh = DBI->connect('dbi:SQLite:dbname=default.db', '', '',
-  { RaiseError => 1, PrintError => 0, sqlite_unicode => 1 }) or die $DBI::errstr;
+  { RaiseError => 1, PrintError => 0, sqlite_unicode => 1 }
+) or die $DBI::errstr;
 
 #
 # テーブルがなければ作成
@@ -76,7 +76,7 @@ foreach my $file (keys(%mtimes)) {
 # データベースに検索対象ファイルの情報を登録
 #
 my $basedir = '../';                  # 🔖 検索対象ディレクトリ
-my @targets = qw{[0-9]*.html};        # 🔖 検索対象ファイル
+my @targets = qw([0-9]*.html);        # 🔖 検索対象ファイル
 my $baseurl = 'https://anineco.org/'; # 🔖 ベースURL
 
 my $n_pages = 0;  # 対象ページ数
@@ -92,7 +92,7 @@ foreach my $file (glob join(' ', map { $basedir . $_ } @targets)) {
   } else {
     $n_insert++;
   }
-  
+
   my $tree = HTML::TreeBuilder->new;
   $tree->ignore_unknown(0); # for 'time' tag
   $tree->parse_file(html_file($file));

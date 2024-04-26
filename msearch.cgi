@@ -1,15 +1,14 @@
-#!/usr/local/bin/perl
+#!/usr/bin/env perl
 
 use strict;
 use warnings;
 use utf8;
-use open ':utf8';
-use open ':std';
+use open qw(:utf8 :std);
 
 use CGI;
-use CGI::Carp qw/fatalsToBrowser/;
+use CGI::Carp qw(fatalsToBrowser);
 use DBI;
-use POSIX qw/strftime/;
+use POSIX qw(strftime);
 
 #
 # HTML特殊文字をエスケープ
@@ -34,7 +33,7 @@ sub print_head {
   $query = htmlspecialchars($query);
 
   print <<"EOS";
-Content-type: text/html;charset=UTF-8
+Content-Type: text/html;charset=UTF-8
 
 <!DOCTYPE html>
 <html lang="ja">
@@ -160,7 +159,8 @@ EOS
 # データベースを開く
 #
 my $dbh = DBI->connect('dbi:SQLite:dbname=default.db', '', '',
-  { RaiseError => 1, PrintError => 0, sqlite_unicode => 1, ReadOnly => 1 }) or die $DBI::errstr;
+  { RaiseError => 1, PrintError => 0, sqlite_unicode => 1, ReadOnly => 1 }
+) or die $DBI::errstr;
 
 #
 # 検索式を得る
