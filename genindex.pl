@@ -6,8 +6,12 @@ use utf8;
 use open qw(:utf8 :std);
 
 use DBI;
+use Encode;
 use HTML::TreeBuilder;
 use IO::HTML;
+use JSON;
+
+my $json = JSON->new->utf8(1);
 
 #
 # HTML::Element のノードからテキストを抽出
@@ -98,9 +102,22 @@ foreach my $file (glob join(' ', map { $basedir . $_ } @targets)) {
   $tree->parse_file(html_file($file));
   $tree->eof();
 
+# JSON-LD から startDate を取得
+  my $period;
+  my @script_tags = $tree->look_down(_tag => 'script', type => 'application/ld+json');
+  for my $script_tag (@script_tags) {
+    my $json_text = join(' ', $script_tag->content_list);
+    my $data = $json->decode(encode('UTF-8', $json_text));
+    if (exists $data->{about} and ref $data->{about} eq 'HASH') {
+      if (exists $data->{about}{startDate}) {
+        $period = $data->{about}{startDate};
+        last;
+      }
+    }
+  }
+
   my $url = $baseurl . ($file =~ s/^$basedir//r);
   my $lang = $tree->find('html')->attr('lang');
-  my $period = $tree->find('time')->attr('datetime'); # %Y-%m-%d フォーマット
   my $title = $tree->find('title')->as_text();
   my $texts = [];
   extract_text($texts, $tree->find('body'));
